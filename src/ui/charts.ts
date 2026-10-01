@@ -22,6 +22,12 @@ export const signalTypeLabel: Record<SignalType, string> = {
   "file-fragmentation": "Fragmented layer files",
   "unused-genericity": "Unvarying type parameters",
   "excessive-boilerplate": "Structure over behavior",
+  "wrapper-chain": "Empty wrapper chain",
+  "deep-nesting": "Deep markup nesting",
+  "variable-chain": "Variable alias chain",
+  "selector-specificity": "Over-specific selectors",
+  "important-overuse": "Frequent !important",
+  "duplicate-declarations": "Repeated declaration block",
 };
 
 const DONUT_RADIUS = 42;
@@ -192,23 +198,51 @@ export function renderThresholds(rows: ThresholdRow[]): string {
 }
 
 export function renderStatementMix(structural: number, behavioral: number): string {
-  const total = structural + behavioral;
+  return renderSplit({
+    caption: "Structure and behavior",
+    empty: "No statements in this scope.",
+    first: { label: "Structural", value: structural, className: "structural", unit: "structural statements" },
+    second: { label: "Behavioral", value: behavioral, className: "behavioral", unit: "behavioral statements" },
+    note: "Structural statements declare types, forward calls, or pass values through. Behavioral statements make decisions or change values.",
+  });
+}
+
+export interface SplitPart {
+  label: string;
+  value: number;
+  /** CSS class that colors the bar segment and legend swatch. */
+  className: string;
+  /** Plural noun used in the accessible label, such as "structural statements". */
+  unit: string;
+}
+
+export interface SplitChart {
+  caption: string;
+  empty: string;
+  first: SplitPart;
+  second: SplitPart;
+  note: string;
+}
+
+export function renderSplit(chart: SplitChart): string {
+  const { first, second } = chart;
+  const total = first.value + second.value;
   if (total === 0) {
-    return `<figure class="chart"><figcaption>Structure and behavior</figcaption><p class="note">No statements in this scope.</p></figure>`;
+    return `<figure class="chart"><figcaption>${escapeHtml(chart.caption)}</figcaption><p class="note">${escapeHtml(chart.empty)}</p></figure>`;
   }
-  const structuralShare = Math.round((structural / total) * 100);
-  const behavioralShare = 100 - structuralShare;
+  const firstShare = Math.round((first.value / total) * 100);
+  const secondShare = 100 - firstShare;
   return `<figure class="chart">
-    <figcaption>Structure and behavior</figcaption>
-    <div class="split-track" role="img" aria-label="${structural} structural statements, ${behavioral} behavioral statements">
-      <span class="split-part structural" style="width:${structuralShare}%"></span>
-      <span class="split-part behavioral" style="width:${behavioralShare}%"></span>
+    <figcaption>${escapeHtml(chart.caption)}</figcaption>
+    <div class="split-track" role="img" aria-label="${escapeHtml(`${first.value} ${first.unit}, ${second.value} ${second.unit}`)}">
+      <span class="split-part ${first.className}" style="width:${firstShare}%"></span>
+      <span class="split-part ${second.className}" style="width:${secondShare}%"></span>
     </div>
     <ul class="legend inline">
-      <li><span class="swatch structural"></span>Structural<strong>${structural} · ${structuralShare}%</strong></li>
-      <li><span class="swatch behavioral"></span>Behavioral<strong>${behavioral} · ${behavioralShare}%</strong></li>
+      <li><span class="swatch ${first.className}"></span>${escapeHtml(first.label)}<strong>${first.value} · ${firstShare}%</strong></li>
+      <li><span class="swatch ${second.className}"></span>${escapeHtml(second.label)}<strong>${second.value} · ${secondShare}%</strong></li>
     </ul>
-    <p class="note">Structural statements declare types, forward calls, or pass values through. Behavioral statements make decisions or change values.</p>
+    <p class="note">${escapeHtml(chart.note)}</p>
   </figure>`;
 }
 

@@ -1,10 +1,9 @@
 import * as vscode from "vscode";
-import type { AnalysisSnapshot } from "../analyze";
-import { renderAnalysis } from "./render";
+import { renderAnalysis, type PanelSnapshot } from "./render";
 
 let panel: vscode.WebviewPanel | undefined;
 
-export function showAnalysis(snapshot: AnalysisSnapshot, relativePath: string): void {
+export function showAnalysis(snapshot: PanelSnapshot, relativePath: string): void {
   const html = renderAnalysis(snapshot, relativePath);
   if (panel) {
     panel.webview.html = html;

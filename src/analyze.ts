@@ -26,6 +26,7 @@ export interface AnalyzeInput {
 }
 
 export interface AnalysisSnapshot {
+  kind: "code";
   language: SourceLanguage;
   scope: AnalysisScope;
   facts: Facts;
@@ -78,6 +79,7 @@ function snapshot(scope: AnalysisScope, facts: Facts, settings: AnalysisSettings
   return {
     ok: true,
     snapshot: {
+      kind: "code",
       language: facts.language,
       scope,
       facts,

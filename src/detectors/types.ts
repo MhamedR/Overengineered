@@ -29,6 +29,7 @@ export interface AnalysisSettings {
   singleImplementationSeverity: Severity;
   maxDependencyCount: number;
   maxCallDepth: number;
+  maxNestingDepth: number;
 }
 
 export interface DetectorInput {

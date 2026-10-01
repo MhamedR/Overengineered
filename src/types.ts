@@ -139,7 +139,13 @@ export type SignalType =
   | "deep-indirection"
   | "file-fragmentation"
   | "unused-genericity"
-  | "excessive-boilerplate";
+  | "excessive-boilerplate"
+  | "wrapper-chain"
+  | "deep-nesting"
+  | "variable-chain"
+  | "selector-specificity"
+  | "important-overuse"
+  | "duplicate-declarations";
 
 export type Severity = "info" | "low" | "medium" | "high";
 

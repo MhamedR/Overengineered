@@ -5,6 +5,7 @@ export const defaultAnalysisSettings: AnalysisSettings = {
   singleImplementationSeverity: "medium",
   maxDependencyCount: 5,
   maxCallDepth: 4,
+  maxNestingDepth: 12,
 };
 
 const OUTSIDE_SCOPE = "Other implementations may exist outside the analyzed code.";

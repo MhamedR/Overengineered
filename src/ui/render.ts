@@ -1,9 +1,11 @@
 import type { AnalysisSnapshot } from "../analyze";
+import type { MarkupSnapshot } from "../markup/analyze";
 import { concernLabel } from "../score";
 import type { Signal } from "../types";
 import {
   renderScoreGauge,
   renderSeverityDonut,
+  renderSplit,
   renderStatementMix,
   renderThresholds,
   renderTypeBars,
@@ -14,18 +16,28 @@ import {
 } from "./charts";
 import { escapeHtml } from "./html";
 
+export type PanelSnapshot = AnalysisSnapshot | MarkupSnapshot;
+
 const questionOrder = [
   "Is another implementation expected?",
   "Is this abstraction required by a framework?",
   "Is this code intended to be reused?",
   "Is this architecture intentionally designed for future extension?",
+  "Does a stylesheet or script select these wrappers by position?",
+  "Could the inner element sit directly in the parent?",
+  "Could the layout use fewer levels with grid or flexbox?",
+  "Is this selector overriding styles you do not control?",
+  "Would a single class on the element describe it?",
+  "Which rules are these declarations competing with?",
+  "Does each variable layer have a different reason to change?",
+  "Would a shared class or variable remove the repetition?",
+  "Are these rules expected to change independently?",
 ];
 
-export function renderAnalysis(snapshot: AnalysisSnapshot, relativePath: string): string {
+export function renderAnalysis(snapshot: PanelSnapshot, relativePath: string): string {
   const scope = snapshot.scope === "selection" ? "Selection" : snapshot.scope === "function" ? "Function" : "File";
   const confidence = Math.round(snapshot.confidence * 100);
   const questions = uniqueQuestions(snapshot.signals);
-  const metrics = snapshot.metrics;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -55,7 +67,21 @@ export function renderAnalysis(snapshot: AnalysisSnapshot, relativePath: string)
     ${renderTypeBars(snapshot.signals)}
   </section>
 
-  <h2>Code shape</h2>
+  ${snapshot.kind === "markup" ? renderMarkupShape(snapshot) : renderCodeShape(snapshot)}
+
+  <h2>Detected signals</h2>
+  ${snapshot.signals.length === 0 ? "<p>No complexity signals in this scope.</p>" : snapshot.signals.map(renderSignal).join("")}
+  ${questions.length === 0 ? "" : `<h2>Suggested questions</h2><ul>${questions.map((question) => `<li>${escapeHtml(question)}</li>`).join("")}</ul>`}
+
+  <h2>Metrics</h2>
+  ${snapshot.kind === "markup" ? renderMarkupMetrics(snapshot) : renderMetrics(snapshot)}
+</body>
+</html>`;
+}
+
+function renderCodeShape(snapshot: AnalysisSnapshot): string {
+  const metrics = snapshot.metrics;
+  return `<h2>Code shape</h2>
   <section class="charts">
     ${renderStatementMix(metrics.structuralStatements, metrics.behavioralStatements)}
     ${renderThresholds([
@@ -63,16 +89,63 @@ export function renderAnalysis(snapshot: AnalysisSnapshot, relativePath: string)
       { label: "Call depth", value: metrics.callDepth, limit: snapshot.limits.maxCallDepth },
       { label: "Pass-through layers", value: metrics.indirectionLayers, limit: snapshot.limits.maxCallDepth },
     ])}
-  </section>
+  </section>`;
+}
 
-  <h2>Detected signals</h2>
-  ${snapshot.signals.length === 0 ? "<p>No complexity signals in this scope.</p>" : snapshot.signals.map(renderSignal).join("")}
-  ${questions.length === 0 ? "" : `<h2>Suggested questions</h2><ul>${questions.map((question) => `<li>${escapeHtml(question)}</li>`).join("")}</ul>`}
+function renderMarkupShape(snapshot: MarkupSnapshot): string {
+  const metrics = snapshot.metrics;
+  const charts: string[] = [];
+  if (metrics.elements > 0) {
+    charts.push(
+      renderSplit({
+        caption: "Wrappers and content",
+        empty: "No elements in this scope.",
+        first: { label: "Empty wrappers", value: metrics.bareWrappers, className: "structural", unit: "empty wrappers" },
+        second: { label: "Other elements", value: metrics.elements - metrics.bareWrappers, className: "behavioral", unit: "other elements" },
+        note: "Empty wrappers are div or span elements with no attributes and no text of their own.",
+      }),
+      renderThresholds([{ label: "Nesting depth", value: metrics.maxDepth, limit: snapshot.limits.maxNestingDepth }]),
+    );
+  }
+  if (metrics.declarations > 0) {
+    charts.push(
+      renderSplit({
+        caption: "Declarations using !important",
+        empty: "No declarations in this scope.",
+        first: { label: "!important", value: metrics.importantDeclarations, className: "important", unit: "!important declarations" },
+        second: { label: "Normal", value: metrics.declarations - metrics.importantDeclarations, className: "normal", unit: "normal declarations" },
+        note: "Each !important declaration overrides normal specificity, so the next override often needs one too.",
+      }),
+    );
+  }
+  return `<h2>Markup and style shape</h2>
+  ${charts.length === 0 ? "<p class=\"note\">No elements or style rules in this scope.</p>" : `<section class="charts">${charts.join("")}</section>`}`;
+}
 
-  <h2>Metrics</h2>
-  ${renderMetrics(snapshot)}
-</body>
-</html>`;
+function renderMarkupMetrics(snapshot: MarkupSnapshot): string {
+  const metrics = snapshot.metrics;
+  const rows: Array<[string, number | string]> = [["Non-blank lines", metrics.linesOfCode]];
+  if (metrics.elements > 0) {
+    rows.push(
+      ["Elements", metrics.elements],
+      ["Nesting depth", metrics.maxDepth],
+      ["Empty wrappers", metrics.bareWrappers],
+      ["Longest wrapper chain", metrics.longestWrapperChain],
+    );
+  }
+  if (metrics.rules > 0 || metrics.variables > 0) {
+    rows.push(
+      ["Style rules", metrics.rules],
+      ["Declarations", metrics.declarations],
+      ["!important declarations", metrics.importantDeclarations],
+      ["Longest selector (parts)", metrics.longestSelector],
+      ["Highest specificity", metrics.highestSpecificity],
+      ["Variables", metrics.variables],
+      ["Longest variable alias chain", metrics.longestVariableChain],
+      ["Repeated declaration blocks", metrics.duplicateBlocks],
+    );
+  }
+  return `<dl>${rows.map(([label, value]) => `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(String(value))}</dd>`).join("")}</dl>`;
 }
 
 function renderFilter(signals: Signal[]): string {
@@ -236,6 +309,8 @@ function styles(): string {
     .split-part { display: block; height: 100%; }
     .structural { background: var(--structural); }
     .behavioral { background: var(--behavioral); }
+    .important { background: var(--sev-medium); }
+    .normal { background: var(--sev-low); }
 
     .filter { display: flex; flex-wrap: wrap; gap: 6px; border: 0; padding: 0; margin: 0 0 12px; }
     .filter legend { width: 100%; padding: 0; margin-bottom: 6px; color: var(--muted); font-size: 12px; }

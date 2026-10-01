@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { commands, supportedExtensions, supportedLanguageIds } from "../src/commands";
+import { codeLanguageIds, commands, supportedExtensions, supportedLanguageIds } from "../src/commands";
 
 interface CommandContribution {
   command: string;
@@ -32,6 +32,7 @@ const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
 const extensionSource = readFileSync(join(root, "src/extension.ts"), "utf8");
 
 const editorLanguageWhen = supportedLanguageIds.map((id) => `editorLangId == ${id}`).join(" || ");
+const codeLanguageWhen = codeLanguageIds.map((id) => `editorLangId == ${id}`).join(" || ");
 
 describe("extension manifest", () => {
   it("points VS Code at the esbuild bundle", () => {
@@ -72,7 +73,7 @@ describe("extension manifest", () => {
     });
     expect(packageJson.contributes.menus["editor/context"]).toContainEqual({
       command: commands.analyzeFunction,
-      when: editorLanguageWhen,
+      when: codeLanguageWhen,
       group: "overengineered",
     });
     expect(packageJson.contributes.menus["explorer/context"]).toContainEqual({
@@ -88,6 +89,7 @@ describe("extension manifest", () => {
     expect(properties["overengineered.analysis.enabled"]).toMatchObject({ type: "boolean", default: true });
     expect(properties["overengineered.analysis.maxDependencyCount"]).toMatchObject({ type: "number", default: 5 });
     expect(properties["overengineered.analysis.maxCallDepth"]).toMatchObject({ type: "number", default: 4 });
+    expect(properties["overengineered.analysis.maxNestingDepth"]).toMatchObject({ type: "number", default: 12 });
     expect(properties["overengineered.analysis.singleImplementationSeverity"]).toMatchObject({
       type: "string",
       default: "medium",

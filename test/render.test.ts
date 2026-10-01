@@ -92,6 +92,7 @@ function snapshotWith(evidence: string): AnalysisSnapshot {
     clusterId: "delegation:Service.log",
   };
   return {
+    kind: "code",
     language: "typescript",
     scope: "file",
     facts: {

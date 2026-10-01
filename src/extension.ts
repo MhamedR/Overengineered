@@ -1,13 +1,16 @@
 import { extname } from "node:path";
 import * as vscode from "vscode";
 import { analyzeText } from "./analyze";
-import { commands, supportedLanguageIds, type AnalysisScope } from "./commands";
+import { commands, markupLanguageIds, supportedLanguageIds, type AnalysisScope, type MarkupLanguage } from "./commands";
 import { boundedInt, singleImplementationSeverity } from "./detectors/support";
 import type { AnalysisSettings } from "./detectors/types";
+import { analyzeMarkup } from "./markup/analyze";
 import { MAX_PROJECT_FILES, type ProjectFile } from "./projectContext";
 import { showAnalysis } from "./ui/panel";
 
 const languageIds = new Set<string>(supportedLanguageIds);
+const markupIds = new Set<string>(markupLanguageIds);
+const UNSUPPORTED = "Open a TypeScript, JavaScript, HTML, CSS, SCSS, Less, Vue, or Svelte file to analyze.";
 
 export function activate(context: vscode.ExtensionContext): void {
   const analyzeSelection = () => {
@@ -36,24 +39,20 @@ async function runAnalysis(scope: AnalysisScope, uri?: vscode.Uri): Promise<void
 
   const document = await documentFor(scope, uri);
   if (!document) {
-    await vscode.window.showInformationMessage(
-      scope === "file"
-        ? "Open a TypeScript or JavaScript file, or choose one in the Explorer."
-        : "Open a TypeScript or JavaScript file to analyze.",
-    );
+    await vscode.window.showInformationMessage(scope === "file" ? `${UNSUPPORTED} You can also choose one in the Explorer.` : UNSUPPORTED);
     return;
   }
 
   const languageId = languageIdFor(document);
   if (!languageId) {
-    await vscode.window.showInformationMessage("Overengineered analyzes TypeScript and JavaScript files.");
+    await vscode.window.showInformationMessage(UNSUPPORTED);
     return;
   }
 
   const editor = vscode.window.activeTextEditor;
   if (scope !== "file") {
     if (!editor || editor.document.uri.toString() !== document.uri.toString()) {
-      await vscode.window.showInformationMessage("Open a TypeScript or JavaScript file to analyze.");
+      await vscode.window.showInformationMessage(UNSUPPORTED);
       return;
     }
     if (scope === "selection" && editor.selection.isEmpty) {
@@ -64,6 +63,33 @@ async function runAnalysis(scope: AnalysisScope, uri?: vscode.Uri): Promise<void
 
   const text = document.getText();
   const selection = editor && editor.document.uri.toString() === document.uri.toString() ? editor.selection : undefined;
+  const start = scope === "file" || !selection ? 0 : document.offsetAt(selection.start);
+  const end = scope === "file" || !selection ? text.length : document.offsetAt(selection.end);
+
+  if (markupIds.has(languageId)) {
+    let markup;
+    try {
+      markup = analyzeMarkup({
+        fileName: document.fileName,
+        languageId: languageId as MarkupLanguage,
+        text,
+        scope,
+        start,
+        end,
+        settings: analysisSettings(),
+      });
+    } catch {
+      await vscode.window.showErrorMessage("Overengineered could not parse this file.");
+      return;
+    }
+    if (!markup.ok) {
+      await vscode.window.showInformationMessage(markup.message);
+      return;
+    }
+    showAnalysis(markup.snapshot, vscode.workspace.asRelativePath(document.uri));
+    return;
+  }
+
   const project = await loadProject(document);
   let result;
   try {
@@ -74,8 +100,8 @@ async function runAnalysis(scope: AnalysisScope, uri?: vscode.Uri): Promise<void
       languageId,
       text,
       scope,
-      start: scope === "file" || !selection ? 0 : document.offsetAt(selection.start),
-      end: scope === "file" || !selection ? text.length : document.offsetAt(selection.end),
+      start,
+      end,
       position: selection ? document.offsetAt(selection.active) : 0,
       settings: analysisSettings(),
       projectFiles: project.files,
@@ -100,6 +126,7 @@ function analysisSettings(): AnalysisSettings {
     singleImplementationSeverity: singleImplementationSeverity(config.get("singleImplementationSeverity")),
     maxDependencyCount: boundedInt(config.get("maxDependencyCount"), 5, 1),
     maxCallDepth: boundedInt(config.get("maxCallDepth"), 4, 1),
+    maxNestingDepth: boundedInt(config.get("maxNestingDepth"), 12, 1),
   };
 }
 
@@ -159,6 +186,19 @@ function languageIdFor(document: vscode.TextDocument): string | undefined {
     case ".mjs":
     case ".cjs":
       return "javascript";
+    case ".html":
+    case ".htm":
+      return "html";
+    case ".vue":
+      return "vue";
+    case ".svelte":
+      return "svelte";
+    case ".css":
+      return "css";
+    case ".scss":
+      return "scss";
+    case ".less":
+      return "less";
     default:
       return undefined;
   }
