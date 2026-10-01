@@ -1,7 +1,7 @@
 import type { AnalysisSnapshot } from "../analyze";
 import type { MarkupSnapshot } from "../markup/analyze";
 import { concernLabel } from "../score";
-import type { Signal } from "../types";
+import type { Signal, SignalLocation } from "../types";
 import {
   renderScoreGauge,
   renderSeverityDonut,
@@ -15,6 +15,7 @@ import {
   signalTypeLabel,
 } from "./charts";
 import { escapeHtml } from "./html";
+import { locationHref, uniqueLocations } from "./location";
 
 export type PanelSnapshot = AnalysisSnapshot | MarkupSnapshot;
 
@@ -178,14 +179,19 @@ function renderMetrics(snapshot: AnalysisSnapshot): string {
 }
 
 function renderSignal(signal: Signal): string {
-  const names = signal.locations.map((item) => item.name).filter((name, index, all) => all.indexOf(name) === index);
+  const locations = uniqueLocations(signal.locations);
+  const first = locations[0];
+  const href = first ? locationHref(first) : undefined;
+  const names = locations.map((location) => locationLink(location)).join(", ");
   const confidence = Math.round(signal.confidence * 100);
-  return `<article class="signal" data-severity="${signal.severity}">
+  const openLabel = first ? `Open ${first.name} in the editor` : "";
+  return `<article class="signal${href ? " has-location" : ""}" data-severity="${signal.severity}">
+    ${href ? `<a class="signal-target" href="${escapeHtml(href)}" aria-label="${escapeHtml(openLabel)}" title="${escapeHtml(openLabel)}"></a>` : ""}
     <header class="signal-head">
       <span class="badge sev-fill-${signal.severity}">${escapeHtml(severityLabel[signal.severity])}</span>
-      <h3>${escapeHtml(signal.title)}</h3>
+      <h3>${href ? `<a class="signal-title" href="${escapeHtml(href)}">${escapeHtml(signal.title)}</a>` : escapeHtml(signal.title)}</h3>
     </header>
-    <p class="meta">${escapeHtml(signalTypeLabel[signal.type])}${names.length ? ` · ${escapeHtml(names.join(", "))}` : ""}</p>
+    <p class="meta">${escapeHtml(signalTypeLabel[signal.type])}${names ? ` · ${names}` : ""}</p>
     <div class="confidence" role="img" aria-label="Signal confidence ${confidence}%">
       <span class="confidence-track"><span class="confidence-fill" style="width:${confidence}%"></span></span>
       <span class="confidence-value">${confidence}% signal confidence</span>
@@ -200,6 +206,12 @@ function renderSignal(signal: Signal): string {
         : `<p><strong>Why this may still be reasonable</strong></p><ul>${signal.legitimateReasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join("")}</ul>`
     }
   </article>`;
+}
+
+function locationLink(location: SignalLocation): string {
+  const href = locationHref(location);
+  const label = `Open ${location.name} in the editor`;
+  return `<a class="location" href="${escapeHtml(href)}" title="${escapeHtml(label)}">${escapeHtml(location.name)}</a>`;
 }
 
 function uniqueQuestions(signals: Signal[]): string[] {
@@ -327,7 +339,12 @@ function styles(): string {
     .filter-input:disabled + label { opacity: 0.4; cursor: default; }
     ${filterRules}
 
-    .signal { border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; margin: 0 0 12px; }
+    .signal { position: relative; border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; margin: 0 0 12px; }
+    .signal.has-location { cursor: pointer; }
+    .signal-target { position: absolute; inset: 0; border-radius: inherit; z-index: 1; }
+    .location { position: relative; z-index: 2; color: var(--vscode-textLink-foreground, #3794ff); }
+    .signal-title, .location { text-decoration: none; }
+    .signal-title { color: inherit; }
     .signal[data-severity="high"] { border-left: 3px solid var(--sev-high); }
     .signal[data-severity="medium"] { border-left: 3px solid var(--sev-medium); }
     .signal[data-severity="low"] { border-left: 3px solid var(--sev-low); }

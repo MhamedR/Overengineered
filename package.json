@@ -2,8 +2,8 @@
   "name": "overengineered",
   "displayName": "Overengineered",
   "description": "Flags complexity in TypeScript, JavaScript, HTML, and CSS that may be heavier than the problem the code solves.",
-  "version": "1.0.0",
-  "publisher": "overengineered",
+  "version": "1.1.0",
+  "publisher": "Overengineered-detect",
   "license": "MIT",
   "icon": "media/icon.png",
   "engines": {
@@ -43,12 +43,21 @@
         "command": "overengineered.analyzeFunction",
         "title": "Analyze Function",
         "category": "Overengineered"
+      },
+      {
+        "command": "overengineered.revealLocation",
+        "title": "Open Signal Location",
+        "category": "Overengineered"
       }
     ],
     "menus": {
       "commandPalette": [
         {
           "command": "overengineered.analyzeForOverengineering",
+          "when": "false"
+        },
+        {
+          "command": "overengineered.revealLocation",
           "when": "false"
         }
       ],

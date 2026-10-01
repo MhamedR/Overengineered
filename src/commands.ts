@@ -3,6 +3,7 @@ export const commands = {
   analyzeForOverengineering: "overengineered.analyzeForOverengineering",
   analyzeFile: "overengineered.analyzeFile",
   analyzeFunction: "overengineered.analyzeFunction",
+  revealLocation: "overengineered.revealLocation",
 } as const;
 
 export const codeLanguageIds = [

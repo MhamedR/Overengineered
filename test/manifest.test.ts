@@ -59,11 +59,19 @@ describe("extension manifest", () => {
       title: "Analyze Function",
       category: "Overengineered",
     });
+    expect(byId.get(commands.revealLocation)).toMatchObject({
+      title: "Open Signal Location",
+      category: "Overengineered",
+    });
   });
 
   it("places commands on the editor and explorer menus", () => {
     expect(packageJson.contributes.menus["commandPalette"]).toContainEqual({
       command: commands.analyzeForOverengineering,
+      when: "false",
+    });
+    expect(packageJson.contributes.menus["commandPalette"]).toContainEqual({
+      command: commands.revealLocation,
       when: "false",
     });
     expect(packageJson.contributes.menus["editor/context"]).toContainEqual({

@@ -6,7 +6,9 @@ import { boundedInt, singleImplementationSeverity } from "./detectors/support";
 import type { AnalysisSettings } from "./detectors/types";
 import { analyzeMarkup } from "./markup/analyze";
 import { MAX_PROJECT_FILES, type ProjectFile } from "./projectContext";
+import { isSignalLocation } from "./ui/location";
 import { showAnalysis } from "./ui/panel";
+import type { SignalLocation } from "./types";
 
 const languageIds = new Set<string>(supportedLanguageIds);
 const markupIds = new Set<string>(markupLanguageIds);
@@ -25,6 +27,9 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand(commands.analyzeFunction, () => {
       void runAnalysis("function");
+    }),
+    vscode.commands.registerCommand(commands.revealLocation, (location?: unknown) => {
+      void revealLocation(location);
     }),
   );
 }
@@ -201,5 +206,29 @@ function languageIdFor(document: vscode.TextDocument): string | undefined {
       return "less";
     default:
       return undefined;
+  }
+}
+
+async function revealLocation(value: unknown): Promise<void> {
+  if (!isSignalLocation(value)) return;
+  const location: SignalLocation = value;
+  try {
+    const uri = vscode.Uri.file(location.fileName);
+    const document = await vscode.workspace.openTextDocument(uri);
+    const startOffset = Math.max(0, Math.floor(location.start));
+    const endOffset = Math.max(startOffset, Math.floor(location.end));
+    const range = new vscode.Range(document.positionAt(startOffset), document.positionAt(endOffset));
+    const open = vscode.window.visibleTextEditors.find(
+      (editor) => editor.document.uri.fsPath === uri.fsPath || editor.document.fileName === location.fileName,
+    );
+    const editor = await vscode.window.showTextDocument(document, {
+      viewColumn: open?.viewColumn ?? vscode.ViewColumn.One,
+      selection: range,
+      preview: false,
+      preserveFocus: false,
+    });
+    editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+  } catch {
+    await vscode.window.showErrorMessage("Overengineered could not open that location.");
   }
 }

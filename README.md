@@ -97,6 +97,8 @@ Each signal card has:
 - **Interpretation**: what the evidence may mean,
 - **Why this may still be reasonable**: common, legitimate reasons for the same shape.
 
+Click a signal card, its title, or a name such as `recordLoose` to open that declaration in the editor and select it. When a signal names more than one symbol, each name opens its own location.
+
 Below the cards, **Suggested questions** collects the questions worth asking about this code, such as "Is another implementation expected?"
 
 The panel ends with the full list of raw **metrics**.

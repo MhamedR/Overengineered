@@ -72,9 +72,20 @@ describe("renderAnalysis", () => {
     expect(html).toMatch(/<input type="radio" name="severity" id="filter-all" class="filter-input" checked>/);
     expect(html).toMatch(/id="filter-medium" class="filter-input">/);
     expect(html).toMatch(/id="filter-high" class="filter-input" disabled>/);
-    expect(html).toContain('<article class="signal" data-severity="medium">');
+    expect(html).toContain('<article class="signal has-location" data-severity="medium">');
     expect(html).toContain('body:has(#filter-high:checked) .signal:not([data-severity="high"]) { display: none; }');
     expect(html).toContain('body:has(#filter-medium:checked) .chart-part:not([data-severity="medium"]) { opacity: 0.18; }');
+  });
+
+  it("links a signal card to its declaration without scripts", () => {
+    const html = renderAnalysis(snapshotWith("open"), "file.ts");
+    const href = `command:overengineered.revealLocation?${encodeURIComponent(
+      JSON.stringify([{ fileName: "file.ts", name: "Service.log", start: 0, end: 10 }]),
+    )}`;
+    expect(html).not.toMatch(/<script/i);
+    expect(html).toContain(`<a class="signal-target" href="${href}" aria-label="Open Service.log in the editor"`);
+    expect(html).toContain(`<a class="signal-title" href="${href}">Method only forwards a call</a>`);
+    expect(html).toContain(`<a class="location" href="${href}" title="Open Service.log in the editor">Service.log</a>`);
   });
 });
 
