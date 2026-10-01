@@ -1,0 +1,127 @@
+{
+  "name": "overengineered",
+  "displayName": "Overengineered",
+  "description": "Flags architectural complexity that may be heavier than the problem the code solves.",
+  "version": "1.0.0",
+  "publisher": "overengineered",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Linters",
+    "Programming Languages"
+  ],
+  "main": "./dist/extension.js",
+  "scripts": {
+    "vscode:prepublish": "node esbuild.mjs --production",
+    "compile": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "node esbuild.mjs --production && node scripts/fetch-typescript-binaries.mjs && vsce package --allow-missing-repository",
+    "package": "npm run build"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "overengineered.analyzeSelection",
+        "title": "Analyze Selection",
+        "category": "Overengineered"
+      },
+      {
+        "command": "overengineered.analyzeForOverengineering",
+        "title": "Analyze for Overengineering"
+      },
+      {
+        "command": "overengineered.analyzeFile",
+        "title": "Analyze File",
+        "category": "Overengineered"
+      },
+      {
+        "command": "overengineered.analyzeFunction",
+        "title": "Analyze Function",
+        "category": "Overengineered"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "overengineered.analyzeForOverengineering",
+          "when": "false"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "overengineered.analyzeForOverengineering",
+          "when": "editorHasSelection && (editorLangId == typescript || editorLangId == javascript || editorLangId == typescriptreact || editorLangId == javascriptreact)",
+          "group": "overengineered"
+        },
+        {
+          "command": "overengineered.analyzeFunction",
+          "when": "editorLangId == typescript || editorLangId == javascript || editorLangId == typescriptreact || editorLangId == javascriptreact",
+          "group": "overengineered"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "overengineered.analyzeFile",
+          "when": "resourceExtname == .ts || resourceExtname == .tsx || resourceExtname == .js || resourceExtname == .jsx || resourceExtname == .mjs || resourceExtname == .cjs",
+          "group": "overengineered"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Overengineered",
+      "properties": {
+        "overengineered.analysis.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Overengineered analysis commands."
+        },
+        "overengineered.analysis.maxDependencyCount": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "description": "Constructor dependency count above which a high-dependency signal may be reported."
+        },
+        "overengineered.analysis.maxCallDepth": {
+          "type": "number",
+          "default": 4,
+          "minimum": 1,
+          "description": "Call-chain depth above which a deep-indirection signal may be reported."
+        },
+        "overengineered.analysis.singleImplementationSeverity": {
+          "type": "string",
+          "enum": [
+            "info",
+            "low",
+            "medium",
+            "high"
+          ],
+          "default": "medium",
+          "description": "Severity used when an interface has a single implementation."
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "typescript": "7.0.2"
+  },
+  "optionalDependencies": {
+    "@typescript/typescript-darwin-arm64": "7.0.2",
+    "@typescript/typescript-darwin-x64": "7.0.2",
+    "@typescript/typescript-linux-arm64": "7.0.2",
+    "@typescript/typescript-linux-x64": "7.0.2",
+    "@typescript/typescript-win32-arm64": "7.0.2",
+    "@typescript/typescript-win32-x64": "7.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.25.1",
+    "vitest": "^3.0.9"
+  }
+}
