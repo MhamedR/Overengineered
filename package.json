@@ -2,7 +2,7 @@
     "name": "overengineered",
     "displayName": "Overengineered",
     "description": "Flags complexity in TypeScript, JavaScript, HTML, and CSS that may be heavier than the problem the code solves.",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "publisher": "Overengineered-detect",
     "license": "MIT",
     "homepage": "https://github.com/MhamedR/Overengineered",
